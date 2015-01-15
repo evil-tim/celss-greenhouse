@@ -26,65 +26,56 @@ using System.Reflection;
 
 #endregion
 
-namespace ArkaneSystems.KerbalSpaceProgram.Lacuna
-{
-    internal static class TacSettings
-    {
+namespace ArkaneSystems.KerbalSpaceProgram.Lacuna {
+    internal static class TacSettings {
         private static Type globalSettingsType;
         private static object globalSettings;
 
-        static TacSettings ()
-        {
+        static TacSettings() {
             // Create the TacLifeSupport type reference.
-            Assembly tac = AppDomain.CurrentDomain.GetAssemblies ().Single (p => p.GetName ().Name == "TacLifeSupport");
-            Type tls = tac.GetType ("Tac.TacLifeSupport");
+            Assembly tac = AppDomain.CurrentDomain.GetAssemblies().Single(p => p.GetName().Name == "TacLifeSupport");
+            Type tls = tac.GetType("Tac.TacLifeSupport");
 
-            globalSettingsType = tac.GetType ("Tac.GlobalSettings");
+            globalSettingsType = tac.GetType("Tac.GlobalSettings");
 
-            PropertyInfo instanceProp = tls.GetProperty ("Instance",
+            PropertyInfo instanceProp = tls.GetProperty("Instance",
                                                          BindingFlags.Static | BindingFlags.FlattenHierarchy |
                                                          BindingFlags.Public);
-            object instance = instanceProp.GetValue (null, null);
+            object instance = instanceProp.GetValue(null, null);
 
-            PropertyInfo gsProp = tls.GetProperty ("globalSettings",
+            PropertyInfo gsProp = tls.GetProperty("globalSettings",
                                                    BindingFlags.GetProperty | BindingFlags.Instance |
                                                    BindingFlags.Public);
-            globalSettings = gsProp.GetValue (instance, null);
+            globalSettings = gsProp.GetValue(instance, null);
         }
 
-        public static int MaxDeltaTime
-        {
-            get
-            {
-                PropertyInfo mdtProp = globalSettingsType.GetProperty ("MaxDeltaTime",
+        public static int MaxDeltaTime {
+            get {
+                PropertyInfo mdtProp = globalSettingsType.GetProperty("MaxDeltaTime",
                                                                        BindingFlags.Public | BindingFlags.Instance);
-                object retval = mdtProp.GetValue (globalSettings, null);
+                object retval = mdtProp.GetValue(globalSettings, null);
 
-                return (int) retval;
+                return (int)retval;
             }
         }
 
-        public static int ElectricityMaxDeltaTime
-        {
-            get
-            {
-                PropertyInfo mdtProp = globalSettingsType.GetProperty ("ElectricityMaxDeltaTime",
+        public static int ElectricityMaxDeltaTime {
+            get {
+                PropertyInfo mdtProp = globalSettingsType.GetProperty("ElectricityMaxDeltaTime",
                                                                        BindingFlags.Public | BindingFlags.Instance);
-                object retval = mdtProp.GetValue (globalSettings, null);
+                object retval = mdtProp.GetValue(globalSettings, null);
 
-                return (int) retval;
+                return (int)retval;
             }
         }
 
-        public static int ElectricityId
-        {
-            get
-            {
-                PropertyInfo mdtProp = globalSettingsType.GetProperty ("ElectricityId",
+        public static int ElectricityId {
+            get {
+                PropertyInfo mdtProp = globalSettingsType.GetProperty("ElectricityId",
                                                                        BindingFlags.Public | BindingFlags.Instance);
-                object retval = mdtProp.GetValue (globalSettings, null);
+                object retval = mdtProp.GetValue(globalSettings, null);
 
-                return (int) retval;
+                return (int)retval;
             }
         }
     }

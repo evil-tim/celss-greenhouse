@@ -21,16 +21,13 @@
 
 #endregion
 
-namespace ArkaneSystems.KerbalSpaceProgram.Lacuna
-{
-    public class LacunaResourceRatio
-    {
+namespace ArkaneSystems.KerbalSpaceProgram.Lacuna {
+    public class LacunaResourceRatio {
         public PartResourceDefinition Resource;
         public double Ratio;
         public bool AllowExtra;
 
-        public LacunaResourceRatio(PartResourceDefinition resource, double ratio, bool allowExtra = false)
-        {
+        public LacunaResourceRatio(PartResourceDefinition resource, double ratio, bool allowExtra = false) {
             this.Resource = resource;
             this.Ratio = ratio;
             this.AllowExtra = allowExtra;
