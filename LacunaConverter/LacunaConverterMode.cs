@@ -18,12 +18,9 @@
 
 #endregion
 
-namespace ArkaneSystems.KerbalSpaceProgram.Lacuna
-{
-    public enum LacunaConverterMode
-    {
+namespace ArkaneSystems.KerbalSpaceProgram.Lacuna {
+    public enum LacunaConverterMode {
         Disabled = 0,
-        Celss = 1,
-        Isru = 2
+        Celss = 1
     }
 }

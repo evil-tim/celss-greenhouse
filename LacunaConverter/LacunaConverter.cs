@@ -32,10 +32,8 @@ using UnityEngine;
 
 #endregion
 
-namespace ArkaneSystems.KerbalSpaceProgram.Lacuna
-{
-    public class LacunaGreenhouseConverter : PartModule
-    {
+namespace ArkaneSystems.KerbalSpaceProgram.Lacuna {
+    public class LacunaGreenhouseConverter : PartModule {
         /*
          * Example config file:
          *    MODULE
@@ -49,206 +47,154 @@ namespace ArkaneSystems.KerbalSpaceProgram.Lacuna
          *       // For each resource, list the resource name and the amount (which
          *       // is multiplied by the conversionRate)
          *       CelssInputResources = CarbonDioxide, 261.78, WasteWater, 1.98, Waste, 0.56, ElectricCharge, 1900800
-         *       IsruInputResources = CarbonDioxide, 261.78, Water, 1.84, Ammonia, 0.72, ElectricCharge, 1900800
          *
          *       // A comma separated list of resources to output in each mode. Same as above
          *       // but also specify whether it should keep converting if the
          *       // resource is full (generating excess that will be thrown away).
          *       CelssOutputResources = Oxygen, 304.27, true, Water, 1.798, true, Food, 0.32, true
-         *       IsruOutputResources = Oxygen, 304.27, true, Water, 1.798, true, Food, 0.32, true
          *    }
          */
 
-        private const int SecondsPerDay = 24 * 60 * 60;
-        private static readonly char[] Delimiters = {' ', ',', '\t', ';'};
-        private List<LacunaResourceRatio> CelssInputResourceList;
+        private const double secondsInKerbinDay = 21600;
+        private static readonly char[] Delimiters = { ' ', ',', '\t', ';' };
 
         [KSPField]
         public string CelssInputResources = "";
-
-        private List<LacunaResourceRatio> CelssOutputResourceList;
+        private List<LacunaResourceRatio> CelssInputResourceList;
 
         [KSPField]
         public string CelssOutputResources = "";
+        private List<LacunaResourceRatio> CelssOutputResourceList;
 
         [KSPField]
         public float ConversionRate = 1.0f;
 
-        private List<LacunaResourceRatio> IsruInputResourceList;
-
-        [KSPField]
-        public string IsruInputResources = "";
-
-        private List<LacunaResourceRatio> IsruOutputResourceList;
-
-        [KSPField]
-        public string IsruOutputResources = "";
-
         [KSPField]
         public string ShutterAnimationName = "";
-
         public Animation ShutterAnimation = null;
 
-        [KSPField (isPersistant = true)]
+        [KSPField(isPersistant = true)]
         public int _underlyingMode;
-
-        public LacunaConverterMode Mode
-        {
-            get { return (LacunaConverterMode) this._underlyingMode; }
-            set { this._underlyingMode = (int) value;  }
+        public LacunaConverterMode Mode {
+            get { return (LacunaConverterMode)this._underlyingMode; }
+            set { this._underlyingMode = (int)value; }
         }
+        protected readonly string[] Modes = { "Inactive", "Operating in CELSS mode" };
 
-        protected readonly string[] Modes = {"Inactive", "Operating in CELSS mode", "Operating in ISRU mode"};
-
-        [KSPField (isPersistant = false, guiActive = true, guiName = "Status")]
+        [KSPField(isPersistant = false, guiActive = true, guiName = "Status")]
         public string StatusDisplay;
 
-        private double lastUpdateTime;
+        private double LastUpdateTime;
 
-        [KSPEvent (guiActive = true, guiName = "Activate in CELSS mode", active = true)]
-        public void ActivateInCelssMode ()
-        {
+        [KSPEvent(guiActive = true, guiName = "Activate in CELSS mode", active = true)]
+        public void ActivateInCelssMode() {
             this.Mode = LacunaConverterMode.Celss;
 
             // open shutters
-            if (this.ShutterAnimation != null)
-            {
+            if (this.ShutterAnimation != null) {
                 this.ShutterAnimation[this.ShutterAnimationName].speed = 1.0f;
-                this.ShutterAnimation.Play (this.ShutterAnimationName);
+                this.ShutterAnimation.Play(this.ShutterAnimationName);
             }
         }
 
-        [KSPEvent (guiActive = true, guiName = "Activate in ISRU mode", active = true)]
-        public void ActivateInIsruMode ()
-        {
-            this.Mode = LacunaConverterMode.Isru;
-
-            // open shutters
-            if (this.ShutterAnimation != null)
-            {
-                this.ShutterAnimation[this.ShutterAnimationName].speed = 1.0f;
-                this.ShutterAnimation.Play (this.ShutterAnimationName);
-            }
-        }
-
-        [KSPEvent (guiActive = true, guiName = "Shut Down", active = false)]
-        public void ShutdownGreenhouse ()
-        {
+        [KSPEvent(guiActive = true, guiName = "Shut Down", active = false)]
+        public void ShutdownGreenhouse() {
             this.Mode = LacunaConverterMode.Disabled;
 
             // close shutters
-            if (this.ShutterAnimation != null)
-            {
+            if (this.ShutterAnimation != null) {
                 this.ShutterAnimation[this.ShutterAnimationName].speed = -1.0f;
-                this.ShutterAnimation.Play (this.ShutterAnimationName);
+                this.ShutterAnimation.Play(this.ShutterAnimationName);
             }
         }
 
-        public override void OnAwake ()
-        {
-            base.OnAwake ();
-            this.UpdateResourceLists ();
+        public override void OnAwake() {
+            base.OnAwake();
+            this.UpdateResourceLists();
 
-            if (!string.IsNullOrEmpty (this.ShutterAnimationName))
-            {
-                this.ShutterAnimation = this.part.FindModelAnimators (this.ShutterAnimationName)[0];
+            if (!string.IsNullOrEmpty(this.ShutterAnimationName)) {
+                this.ShutterAnimation = this.part.FindModelAnimators(this.ShutterAnimationName)[0];
             }
         }
 
-        public override void OnStart (StartState state)
-        {
-            base.OnStart (state);
+        public override void OnStart(StartState state) {
+            base.OnStart(state);
 
             if (state != StartState.Editor)
-                this.part.force_activate ();
+                this.part.force_activate();
 
-            if (this.Mode == LacunaConverterMode.Disabled)
-            {
+            if (this.Mode == LacunaConverterMode.Disabled) {
                 this.ShutterAnimation[this.ShutterAnimationName].speed = -1.0f;
-                this.ShutterAnimation.Play (this.ShutterAnimationName);
+                this.ShutterAnimation.Play(this.ShutterAnimationName);
             }
         }
 
-        public override void OnFixedUpdate ()
-        {
-            base.OnFixedUpdate ();
+        public override void OnFixedUpdate() {
+            base.OnFixedUpdate();
 
-            if (Time.timeSinceLevelLoad < 1.0f || !FlightGlobals.ready)
-                return;
-
-            if (this.lastUpdateTime == 0.0f)
-            {
-                // Just started running
-                this.lastUpdateTime = Planetarium.GetUniversalTime ();
+            if (Time.timeSinceLevelLoad < 1.0f || !FlightGlobals.ready) {
                 return;
             }
 
+            if (this.LastUpdateTime == 0.0f) {
+                // Just started running
+                this.LastUpdateTime = Planetarium.GetUniversalTime();
+                return;
+            }
+
+            // set menu items
             this.Events["ActivateInCelssMode"].active = (this.Mode == LacunaConverterMode.Disabled);
-            this.Events["ActivateInIsruMode"].active = (this.Mode == LacunaConverterMode.Disabled);
             this.Events["ShutdownGreenhouse"].active = (this.Mode != LacunaConverterMode.Disabled);
 
-            double deltaTime = Math.Min (Planetarium.GetUniversalTime () - this.lastUpdateTime,
-                                         TacSettings.MaxDeltaTime);
-            this.lastUpdateTime += deltaTime;
-
-            List<LacunaResourceRatio> inputResourceList;
-            List<LacunaResourceRatio> outputResourceList;
-
-            switch (this.Mode)
-            {
-                case LacunaConverterMode.Celss:
-                {
-                    inputResourceList = this.CelssInputResourceList;
-                    outputResourceList = this.CelssOutputResourceList;
-                    break;
-                }
-
-                case LacunaConverterMode.Isru:
-                {
-                    inputResourceList = this.IsruInputResourceList;
-                    outputResourceList = this.IsruOutputResourceList;
-                    break;
-                }
-
-                case LacunaConverterMode.Disabled:
-                default:
-                {
-                    this.StatusDisplay = this.Modes[(int) this.Mode];
-
-                    // Nothing more to do here.
-                    return;
-                }
+            // nothing more to do
+            if (this.Mode == LacunaConverterMode.Disabled) {
+                this.StatusDisplay = this.Modes[(int)this.Mode];
+                return;
             }
 
+            // if running
+            List<LacunaResourceRatio> inputResourceList = this.CelssInputResourceList;
+            List<LacunaResourceRatio> outputResourceList = this.CelssOutputResourceList;
+
+            double deltaTime = Math.Min(
+                Planetarium.GetUniversalTime() - this.LastUpdateTime,
+                TacSettings.MaxDeltaTime
+                );
+            this.LastUpdateTime += deltaTime;
+
             // Do the processing.
-            double desiredAmount = this.ConversionRate / SecondsPerDay * deltaTime;
-            double maxElectricityDesired = Math.Min (desiredAmount,
-                                                     this.ConversionRate / SecondsPerDay *
-                                                     Math.Max (TacSettings.ElectricityMaxDeltaTime,
-                                                               Time.fixedDeltaTime));
-                // Limit the max electricity consumed when reloading a vessel
+            double baseDesiredAmount = (this.ConversionRate / secondsInKerbinDay) * deltaTime;
+            double baseMaxElectricityDesired = Math.Min(
+                baseDesiredAmount,
+                (this.ConversionRate / secondsInKerbinDay) * Math.Max(
+                    TacSettings.ElectricityMaxDeltaTime,
+                    Time.fixedDeltaTime
+                )
+            );
+            // Limit the max electricity consumed when reloading a vessel
+
+            //this.Log("Base Electricicty - " + baseMaxElectricityDesired);
+            //this.Log("Base Resource - " + baseDesiredAmount);
 
             // Limit the resource amounts so that we do not produce more than we have room for, nor consume more than is available
-            foreach (LacunaResourceRatio output in outputResourceList)
-            {
-                if (!output.AllowExtra)
-                {
-                    if (output.Resource.id == TacSettings.ElectricityId && desiredAmount > maxElectricityDesired)
-                    {
+            foreach (LacunaResourceRatio output in outputResourceList) {
+                double desiredAmount;
+                double spaceAvailable;
+                if (!output.AllowExtra) {
+                    if (output.Resource.id == TacSettings.ElectricityId && baseDesiredAmount > baseMaxElectricityDesired) {
                         // Special handling for electricity
-                        double desiredElectricity = maxElectricityDesired * output.Ratio;
-                        double availableSpace = -this.part.IsResourceAvailable (output.Resource, -desiredElectricity);
-                        desiredAmount = desiredAmount * (availableSpace / desiredElectricity);
-                    }
-                    else
-                    {
-                        double availableSpace =
-                            -this.part.IsResourceAvailable (output.Resource, -desiredAmount * output.Ratio);
-                        desiredAmount = availableSpace / output.Ratio;
+                        desiredAmount = baseMaxElectricityDesired * output.Ratio;
+                        //this.Log("Produce Elec - " + desiredAmount);
+                        spaceAvailable = -this.part.IsResourceAvailable(output.Resource, -desiredAmount);
+                        //this.Log("Avail Elec Space - " + spaceAvailable);
+                    } else {
+                        desiredAmount = baseDesiredAmount * output.Ratio;
+                        //this.Log("Produce " + output.Resource.name + " - " + (baseDesiredAmount * output.Ratio));
+                        spaceAvailable = -this.part.IsResourceAvailable(output.Resource, -desiredAmount);
+                        //this.Log("Avail " + output.Resource.name + " - " + spaceAvailable);
                     }
 
-                    if (desiredAmount <= 0.000000001)
-                    {
+                    if (spaceAvailable < desiredAmount) {
                         // Out of space, so no need to run
                         this.StatusDisplay = "No space for more " + output.Resource.name;
                         return;
@@ -256,195 +202,169 @@ namespace ArkaneSystems.KerbalSpaceProgram.Lacuna
                 }
             }
 
-            foreach (LacunaResourceRatio input in inputResourceList)
-            {
-                if (input.Resource.id == TacSettings.ElectricityId && desiredAmount > maxElectricityDesired)
-                {
+            foreach (LacunaResourceRatio input in inputResourceList) {
+                double desiredAmount;
+                double amountAvailable;
+                if (input.Resource.id == TacSettings.ElectricityId && baseDesiredAmount > baseMaxElectricityDesired) {
                     // Special handling for electricity
-                    double desiredElectricity = maxElectricityDesired * input.Ratio;
-                    double amountAvailable = this.part.IsResourceAvailable (input.Resource, desiredElectricity);
-                    desiredAmount = desiredAmount * (amountAvailable / desiredElectricity);
-                }
-                else
-                {
-                    double amountAvailable = this.part.IsResourceAvailable (input.Resource, desiredAmount * input.Ratio);
-                    desiredAmount = amountAvailable / input.Ratio;
+                    desiredAmount = baseMaxElectricityDesired * input.Ratio;
+                    //this.Log("Require Elec - " + desiredAmount);
+                    amountAvailable = this.part.IsResourceAvailable(input.Resource, desiredAmount);
+                    //this.Log("Avail Elec - " + amountAvailable);
+                } else {
+                    desiredAmount = baseDesiredAmount * input.Ratio;
+                    //this.Log("Require " + input.Resource.name + " - " + (baseDesiredAmount * input.Ratio));
+                    amountAvailable = this.part.IsResourceAvailable(input.Resource, desiredAmount);
+                    //this.Log("Avail " + input.Resource.name + " - " + amountAvailable);
                 }
 
-                if (desiredAmount <= 0.000000001)
-                {
+                if (amountAvailable < desiredAmount) {
                     // Not enough input resources
                     this.StatusDisplay = "Not enough " + input.Resource.name;
                     return;
                 }
             }
 
-            foreach (LacunaResourceRatio input in inputResourceList)
-            {
+            foreach (LacunaResourceRatio input in inputResourceList) {
                 double desired;
 
-                if (input.Resource.id == TacSettings.ElectricityId)
-                    desired = Math.Min (desiredAmount, maxElectricityDesired) * input.Ratio;
-                else
-                    desired = desiredAmount * input.Ratio;
+                if (input.Resource.id == TacSettings.ElectricityId) {
+                    desired = Math.Min(baseDesiredAmount, baseMaxElectricityDesired) * input.Ratio;
+                } else {
+                    desired = baseDesiredAmount * input.Ratio;
+                }
+                double actual = this.part.TakeResource(input.Resource, desired);
 
-                double actual = this.part.TakeResource (input.Resource, desired);
-
-                if (actual < (desired * 0.999))
-                {
-                    this.LogWarning ("OnFixedUpdate: obtained less " + input.Resource.name + " than expected: " +
-                                     desired.ToString ("0.000000000") + "/" + actual.ToString ("0.000000000"));
+                if (actual < (desired * 0.999)) {
+                    this.LogWarning("OnFixedUpdate: obtained less " + input.Resource.name + " than expected: " +
+                                     desired.ToString("0.000000000") + "/" + actual.ToString("0.000000000"));
                 }
             }
 
-            foreach (LacunaResourceRatio output in outputResourceList)
-            {
+            foreach (LacunaResourceRatio output in outputResourceList) {
                 double desired;
 
-                if (output.Resource.id == TacSettings.ElectricityId)
-                    desired = Math.Min (desiredAmount, maxElectricityDesired) * output.Ratio;
-                else
-                    desired = desiredAmount * output.Ratio;
+                if (output.Resource.id == TacSettings.ElectricityId) {
+                    desired = Math.Min(baseDesiredAmount, baseMaxElectricityDesired) * output.Ratio;
+                } else {
+                    desired = baseDesiredAmount * output.Ratio;
+                }
+                double actual = -this.part.TakeResource(output.Resource.id, -desired);
 
-                double actual = -this.part.TakeResource (output.Resource.id, -desired);
-
-                if (actual < (desired * 0.999) && !output.AllowExtra)
-                {
-                    this.LogWarning ("OnFixedUpdate: put less " + output.Resource.name + " than expected: " +
-                                     desired.ToString ("0.000000000") + "/" + actual.ToString ("0.000000000"));
+                if (actual < (desired * 0.999) && !output.AllowExtra) {
+                    this.LogWarning("OnFixedUpdate: put less " + output.Resource.name + " than expected: " +
+                                     desired.ToString("0.000000000") + "/" + actual.ToString("0.000000000"));
                 }
             }
 
-            this.StatusDisplay = this.Modes[(int) this.Mode];
+            this.StatusDisplay = this.Modes[(int)this.Mode];
         }
 
-        public override void OnLoad (ConfigNode node)
-        {
-            this.Log ("OnLoad: " + node);
-            base.OnLoad (node);
-            this.lastUpdateTime = GetConfigValue (node, "lastUpdateTime", this.lastUpdateTime);
+        public override void OnLoad(ConfigNode node) {
+            //this.Log("OnLoad: " + node);
+            base.OnLoad(node);
+            this.LastUpdateTime = GetConfigValue(node, "lastUpdateTime", this.LastUpdateTime);
 
-            this.UpdateResourceLists ();
+            this.UpdateResourceLists();
         }
 
-        public override void OnSave (ConfigNode node)
-        {
-            node.AddValue ("lastUpdateTime", this.lastUpdateTime);
-            this.Log ("OnSave: " + node);
+        public override void OnSave(ConfigNode node) {
+            node.AddValue("lastUpdateTime", this.LastUpdateTime);
+            //this.Log("OnSave: " + node);
         }
 
-        public override string GetInfo ()
-        {
-            var sb = new StringBuilder ();
-            sb.Append (base.GetInfo ());
+        public override string GetInfo() {
+            var sb = new StringBuilder();
+            sb.Append(base.GetInfo());
 
-            sb.Append ("\nContains the LacunaGreenhouseConverter module\n  CELSS mode inputs: ");
-            sb.Append (String.Join (", ",
-                                    this.CelssInputResourceList.Select (
-                                                                        value =>
-                                                                        value.Resource.name + ", " + value.Ratio)
-                                        .ToArray ()));
-            sb.Append ("\n  CELSS mode outputs: ");
-            sb.Append (String.Join (", ",
-                                    this.CelssOutputResourceList.Select (
-                                                                         value =>
-                                                                         value.Resource.name + ", " + value.Ratio)
-                                        .ToArray ()));
+            sb.Append("CELSS mode inputs:");
+            foreach (LacunaResourceRatio input in this.CelssInputResourceList) {
+                if (input.Resource.name.Equals("ElectricCharge")) {
+                    sb.Append("\n  " + input.Resource.name + " " + Math.Round(input.Ratio * (this.ConversionRate / secondsInKerbinDay), 4) + " /s");
+                } else {
+                    sb.Append("\n  " + input.Resource.name + " " + Math.Round(input.Ratio * (this.ConversionRate / secondsInKerbinDay) * 3600, 4) + " /h");
+                }
+            }
+            sb.Append("\n\nCELSS mode outputs:");
+            foreach (LacunaResourceRatio output in this.CelssOutputResourceList) {
+                if (output.Resource.name.Equals("ElectricCharge")) {
+                    sb.Append("\n  " + output.Resource.name + " " + Math.Round(output.Ratio * (this.ConversionRate / secondsInKerbinDay), 4) + " /s");
+                } else {
+                    sb.Append("\n  " + output.Resource.name + " " + Math.Round(output.Ratio * (this.ConversionRate / secondsInKerbinDay) * 3600, 4) + " /h");
+                }
+            }
+            sb.Append("\n");
 
-            sb.Append ("\n  ISRU mode inputs: ");
-            sb.Append (String.Join (", ",
-                                    this.IsruInputResourceList.Select (value => value.Resource.name + ", " + value.Ratio)
-                                        .ToArray ()));
-            sb.Append ("\n  ISRU mode outputs: ");
-            sb.Append (String.Join (", ",
-                                    this.IsruOutputResourceList.Select (
-                                                                        value =>
-                                                                        value.Resource.name + ", " + value.Ratio)
-                                        .ToArray ()));
-
-            sb.Append ("\n  Conversion Rate: ");
-            sb.Append (this.ConversionRate);
-            sb.Append ("\n");
-
-            return sb.ToString ();
+            return sb.ToString();
         }
 
-        private void UpdateResourceLists ()
-        {
-            if (this.CelssInputResourceList == null)
-                this.CelssInputResourceList = new List<LacunaResourceRatio> ();
+        private void UpdateResourceLists() {
+            if (this.CelssInputResourceList == null) {
+                this.CelssInputResourceList = new List<LacunaResourceRatio>();
+            }
+            if (this.CelssOutputResourceList == null) {
+                this.CelssOutputResourceList = new List<LacunaResourceRatio>();
+            }
+            this.ParseInputResourceString(this.CelssInputResources, this.CelssInputResourceList);
+            this.ParseOutputResourceString(this.CelssOutputResources, this.CelssOutputResourceList);
 
-            if (this.CelssOutputResourceList == null)
-                this.CelssOutputResourceList = new List<LacunaResourceRatio> ();
-
-            if (this.IsruInputResourceList == null)
-                this.IsruInputResourceList = new List<LacunaResourceRatio> ();
-
-            if (this.IsruOutputResourceList == null)
-                this.IsruOutputResourceList = new List<LacunaResourceRatio> ();
-
-            this.ParseInputResourceString (this.CelssInputResources, this.CelssInputResourceList);
-            this.ParseOutputResourceString (this.CelssOutputResources, this.CelssOutputResourceList);
-
-            this.ParseInputResourceString (this.IsruInputResources, this.IsruInputResourceList);
-            this.ParseOutputResourceString (this.IsruOutputResources, this.IsruOutputResourceList);
         }
 
-        private void ParseInputResourceString (string resourceString, List<LacunaResourceRatio> resources)
-        {
-            resources.Clear ();
+        private void ParseInputResourceString(string resourceString, List<LacunaResourceRatio> resources) {
+            resources.Clear();
 
-            string[] tokens = resourceString.Split (Delimiters, StringSplitOptions.RemoveEmptyEntries);
+            string[] tokens = resourceString.Split(Delimiters, StringSplitOptions.RemoveEmptyEntries);
 
-            for (int i = 0; i < (tokens.Length - 1); i += 2)
-            {
-                PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition (tokens[i]);
+            for (int i = 0; i < (tokens.Length - 1); i += 2) {
+                PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition(tokens[i]);
                 double ratio;
-                if (resource != null && double.TryParse (tokens[i + 1], out ratio))
-                    resources.Add (new LacunaResourceRatio (resource, ratio));
-                else
-                    this.Log ("Cannot parse \"" + resourceString + "\", something went wrong.");
+                if (resource != null &&
+                    double.TryParse(tokens[i + 1], out ratio)
+                    ) {
+                    resources.Add(new LacunaResourceRatio(resource, ratio));
+                } else {
+                    this.Log("Cannot parse \"" + resourceString + "\", something went wrong.");
+                }
             }
 
-            string ratios = resources.Aggregate ("",
-                                                 (result, value) =>
-                                                 result + value.Resource.name + ", " + value.Ratio + ", ");
-            this.Log ("Input resources parsed: " + ratios + "\nfrom " + resourceString);
+            //string ratios = resources.Aggregate("",
+            //                                     (result, value) =>
+            //                                     result + value.Resource.name + ", " + value.Ratio + ", ");
+            //this.Log("Input resources parsed: " + ratios + "\nfrom " + resourceString);
         }
 
-        private void ParseOutputResourceString (string resourceString, List<LacunaResourceRatio> resources)
-        {
-            resources.Clear ();
+        private void ParseOutputResourceString(string resourceString, List<LacunaResourceRatio> resources) {
+            resources.Clear();
 
-            string[] tokens = resourceString.Split (Delimiters, StringSplitOptions.RemoveEmptyEntries);
+            string[] tokens = resourceString.Split(Delimiters, StringSplitOptions.RemoveEmptyEntries);
 
-            for (int i = 0; i < (tokens.Length - 2); i += 3)
-            {
-                PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition (tokens[i]);
+            for (int i = 0; i < (tokens.Length - 2); i += 3) {
+                PartResourceDefinition resource = PartResourceLibrary.Instance.GetDefinition(tokens[i]);
                 double ratio;
                 bool allowExtra;
-                if (resource != null && double.TryParse (tokens[i + 1], out ratio) &&
-                    bool.TryParse (tokens[i + 2], out allowExtra))
-                    resources.Add (new LacunaResourceRatio (resource, ratio, allowExtra));
-                else
-                    this.Log ("Cannot parse \"" + resourceString + "\", something went wrong.");
+                if (resource != null &&
+                    double.TryParse(tokens[i + 1], out ratio) &&
+                    bool.TryParse(tokens[i + 2], out allowExtra)
+                    ) {
+                    resources.Add(new LacunaResourceRatio(resource, ratio, allowExtra));
+                } else {
+                    this.Log("Cannot parse \"" + resourceString + "\", something went wrong.");
+                }
             }
 
-            string ratios = resources.Aggregate ("",
-                                                 (result, value) =>
-                                                 result + value.Resource.name + ", " + value.Ratio + ", ");
-            this.Log ("Output resources parsed: " + ratios + "\nfrom " + resourceString);
+            //string ratios = resources.Aggregate("",
+            //                                     (result, value) =>
+            //                                     result + value.Resource.name + ", " + value.Ratio + ", ");
+            //this.Log("Output resources parsed: " + ratios + "\nfrom " + resourceString);
         }
 
-        public static double GetConfigValue (ConfigNode config, string name, double currentValue)
-        {
+        public static double GetConfigValue(ConfigNode config, string name, double currentValue) {
             double newValue;
-            if (config.HasValue (name) && double.TryParse (config.GetValue (name), out newValue))
-            {
+            if (config.HasValue(name) &&
+                double.TryParse(config.GetValue(name), out newValue)
+                ) {
                 return newValue;
-            }
-            else
-            {
+            } else {
                 return currentValue;
             }
         }
